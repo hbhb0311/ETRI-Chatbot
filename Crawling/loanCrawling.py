@@ -4,83 +4,120 @@ import requests
 import time
 import pandas as pd
 
-
-# catlst = ['C016613', 'C103429', 'C016567', 'C019503', 'C016622', 'C101501']
 df = pd.DataFrame()
-deposit = ['categoryD00169', 'categoryD00027', 'categoryD00031', 'categoryD00025']
 
 driver = webdriver.Chrome('./chromedriver.exe')
 driver.implicitly_wait(3)
 url = 'https://obank.kbstar.com/quics?page=C103429'
-driver.get(url)
-time.sleep(3)
-
+url_loan = f'{url}&cc=b104363:b104516&isNew=N&prcode='
+# driver.get(url)
+# time.sleep(3)
 idx = 0
-for i in deposit:
+
+for i in range(1, 7):
+    driver.get(url)
+    time.sleep(3)
     # driver.execute_script("document.getElementById('layer_today_0819').style.display='none';")
     # driver.execute_script("document.getElementById('uiNavSnb').style.display='none';")
-    button = driver.find_element_by_class_name(f'tabMenu #{i}')
+    if i == 5:
+        continue
+    button = driver.find_element_by_id(f'tab_menu{i}')
     button.click()
 
     time.sleep(3)
 
     text = driver.page_source
     soup = BeautifulSoup(text, 'html.parser')
-    tag = soup.find_all('div', class_='area1')
-    page = soup.find_all('form', action = '/quics?page=C103429&CC=b061496:b061496')
+    # tag = soup.find_all('div', class_='area1')
+    page = soup.find_all('form', action = '/quics?page=C103429&CC=b104363:b104363')
+    page_idx = 0
 
-    for k in page:
-        button = driver.find_element_by_class_name(f"paging #{k['id']}")
+    for _ in page:
+        page_idx += 1
+        button = driver.find_element_by_id(f"pageinput{page_idx}")
         button.click()
         time.sleep(3)
-        text = driver.page_source
-        soup = BeautifulSoup(text, 'html.parser')
-        tag = soup.find_all('div', class_='area1')
+        #
+        # text = driver.page_source
+        # soup = BeautifulSoup(text, 'html.parser')
+        # tag = soup.find_all('div', class_='area1')
 
-        for t in tag:
-            print(t.a.strong.get_text())
-            df.loc[idx, '상품명'] = t.a.strong.get_text()
-            urldp = t.a['onclick'][12:22]
-            url_ = f'{url}&cc=b061496:b061645&isNew=N&prcode={urldp}'
-            ress = requests.get(url_)
+        # for t in tag:
+        #     print(t.a.strong.get_text())
+        #     df.loc[idx, '상품명'] = t.a.strong.get_text()
+        #     urlln = t.a['onclick'][9:19]
+        #     url_ = f'{url_loan}{urlln}&QSL=F'
+        #     ress = requests.get(url_)
 
-            soupp = BeautifulSoup(ress.text, features="html.parser")
-            tagg = soupp.find('div', id='uiProTabCon1')
+        for j in range(1, 11):
+            bttn = driver.find_element_by_xpath(f'//*[@id="b104363"]/div[2]/ul[2]/li[{j}]/div[1]/a')
+            bttn.click()
+            time.sleep(3)
 
-            try:
-                if tagg.find_all('tr')[0].th.get_text() != '구   분':
-                    for i in tagg.find_all('tr'):
-                        colname = i.th.get_text().strip().replace('\n', '')
+            text = driver.page_source
+            soup = BeautifulSoup(text, 'html.parser')
+            tag = soup.find('h2', class_='headline')
+            print(tag.b.get_text())
+
+            text = driver.page_source
+            soup = BeautifulSoup(text, 'html.parser')
+
+            for k in range(1, 3):
+                tagg = soup.find('div', id = f'areaBox{k}')
+
+                for t in tagg.ul.find_all('li'):
+                    try:
+                        colname = t.strong.get_text().replace('\n', '')
                         df.loc[idx, colname] = ''
 
-                        for j in i.find_all('td'):
-                            jtext = j.get_text().strip().replace('\n', '')
-                            if 'X' in jtext:
-                                jtext = '불가능'
-                            elif 'O' in jtext:
-                                jtext = '가능'
-                            df.loc[idx, colname] += jtext
-                else:
-                    tagg = soupp.find('div', class_ = 'infoCont')
-                    tagg = tagg.find('tbody')
-                    for i in tagg.find_all('tr'):
-                        colname = i.td.get_text().strip().replace('\n', '')
-                        df.loc[idx, colname] = ''
+                        for text in t.div.ul.find_all('li'):
+                            txt = text.get_text().strip().replace('\n', '')
+                            df.loc[idx, colname] += (txt + ' ')
+                    except:
+                        print('오류 발생!!!!!!!!!!!!')
 
-                        for j in i.find_all('td'):
-                            jtext = j.get_text().strip().replace('\n', '')
-                            if jtext == colname:
-                                continue
-                            if 'X' in jtext:
-                                jtext = '불가능'
-                            elif 'O' in jtext:
-                                jtext = '가능'
-                            df.loc[idx, colname] += jtext
-            except:
-                print('오류발생!!')
+            driver.get(url)
+            button = driver.find_element_by_id(f'tab_menu{i}')
+            button.click()
+            button = driver.find_element_by_id(f"pageinput{page_idx}")
+            button.click()
+            time.sleep(3)
 
             idx += 1
             print(df)
+#            df.to_csv('loan.csv', index=False)
             print('-----------------------------------------------------')
 
-df.to_csv('deposit.csv', index = False)
+            # try:
+            #     if tagg.find_all('tr')[0].th.get_text() != '구   분':
+            #         for i in tagg.find_all('tr'):
+            #             colname = i.th.get_text().strip().replace('\n', '')
+            #             df.loc[idx, colname] = ''
+            #
+            #             for j in i.find_all('td'):
+            #                 jtext = j.get_text().strip().replace('\n', '')
+            #                 if 'X' in jtext:
+            #                     jtext = '불가능'
+            #                 elif 'O' in jtext:
+            #                     jtext = '가능'
+            #                 df.loc[idx, colname] += jtext
+            #     else:
+            #         tagg = soupp.find('div', class_ = 'infoCont')
+            #         tagg = tagg.find('tbody')
+            #         for i in tagg.find_all('tr'):
+            #             colname = i.td.get_text().strip().replace('\n', '')
+            #             df.loc[idx, colname] = ''
+            #
+            #             for j in i.find_all('td'):
+            #                 jtext = j.get_text().strip().replace('\n', '')
+            #                 if jtext == colname:
+            #                     continue
+            #                 if 'X' in jtext:
+            #                     jtext = '불가능'
+            #                 elif 'O' in jtext:
+            #                     jtext = '가능'
+            #                 df.loc[idx, colname] += jtext
+            # except:
+            #     print('오류발생!!')
+
+df.to_csv('loan.csv', index = False)
